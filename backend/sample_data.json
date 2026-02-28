@@ -1,0 +1,103 @@
+[
+  {
+    "sku": "BRN-SF-003",
+    "name": "Sofa Modułowa Comfort",
+    "manufacturer": "Bernhardt",
+    "collection": "Modern Comfort",
+    "description": "Modułowa sofa z możliwością konfiguracji elementów",
+    "base_price": 15000,
+    "currency": "PLN",
+    "product_type": "sofa",
+    "width": 320,
+    "height": 80,
+    "depth": 180,
+    "weight": 80,
+    "categories": "Sofy,Salon",
+    "configurations": [
+      {
+        "name": "fabric",
+        "display_name": "Materiał obicia",
+        "config_type": "material",
+        "is_required": true,
+        "options": [
+          {"value": "cotton", "display_name": "Bawełna", "price_modifier": 0, "is_default": true},
+          {"value": "linen", "display_name": "Len", "price_modifier": 800},
+          {"value": "velvet", "display_name": "Welur", "price_modifier": 1500},
+          {"value": "leather", "display_name": "Skóra naturalna", "price_modifier": 4500}
+        ]
+      },
+      {
+        "name": "color",
+        "display_name": "Kolor",
+        "config_type": "color",
+        "is_required": true,
+        "options": [
+          {"value": "grey", "display_name": "Szary", "price_modifier": 0, "is_default": true},
+          {"value": "navy", "display_name": "Granatowy", "price_modifier": 0},
+          {"value": "beige", "display_name": "Beżowy", "price_modifier": 0},
+          {"value": "green", "display_name": "Butelkowa zieleń", "price_modifier": 200}
+        ]
+      },
+      {
+        "name": "legs",
+        "display_name": "Nóżki",
+        "config_type": "select",
+        "options": [
+          {"value": "wood_oak", "display_name": "Dąb naturalny", "price_modifier": 0, "is_default": true},
+          {"value": "wood_walnut", "display_name": "Orzech", "price_modifier": 300},
+          {"value": "metal_black", "display_name": "Metal czarny", "price_modifier": 200},
+          {"value": "metal_gold", "display_name": "Metal złoty", "price_modifier": 500}
+        ]
+      },
+      {
+        "name": "modules",
+        "display_name": "Liczba modułów",
+        "config_type": "select",
+        "is_required": true,
+        "options": [
+          {"value": "3", "display_name": "3 moduły", "price_modifier": 0, "is_default": true},
+          {"value": "4", "display_name": "4 moduły", "price_modifier": 3500},
+          {"value": "5", "display_name": "5 modułów", "price_modifier": 7000}
+        ]
+      }
+    ]
+  },
+  {
+    "sku": "BRN-CH-003",
+    "name": "Krzesło Jadalniane Elegance",
+    "manufacturer": "Bernhardt",
+    "collection": "Dining Collection",
+    "description": "Eleganckie krzesło jadalniane z tapicerowanym siedziskiem",
+    "base_price": 1800,
+    "currency": "PLN",
+    "product_type": "chair",
+    "width": 48,
+    "height": 92,
+    "depth": 55,
+    "weight": 8,
+    "categories": "Krzesła,Jadalnia",
+    "configurations": [
+      {
+        "name": "upholstery",
+        "display_name": "Tapicerka",
+        "config_type": "material",
+        "is_required": true,
+        "options": [
+          {"value": "fabric_basic", "display_name": "Tkanina standard", "price_modifier": 0, "is_default": true},
+          {"value": "fabric_premium", "display_name": "Tkanina premium", "price_modifier": 400},
+          {"value": "leather", "display_name": "Skóra", "price_modifier": 900}
+        ]
+      },
+      {
+        "name": "finish",
+        "display_name": "Wykończenie drewna",
+        "config_type": "select",
+        "options": [
+          {"value": "natural", "display_name": "Naturalny", "price_modifier": 0, "is_default": true},
+          {"value": "walnut", "display_name": "Orzech", "price_modifier": 150},
+          {"value": "black", "display_name": "Czarny mat", "price_modifier": 100}
+        ]
+      }
+    ]
+  }
+]
