@@ -1,0 +1,11 @@
+sku,name,manufacturer,collection,description,base_price,currency,product_type,width,height,depth,weight,categories
+BRN-SF-001,Sofa Narożna Lux,Bernhardt,Luxe Living,Elegancka sofa narożna z wysokiej jakości materiałów,12500,PLN,sofa,280,85,160,65,Sofy,Salon
+BRN-SF-002,Sofa 3-osobowa Classic,Bernhardt,Classic Line,Klasyczna sofa trzyosobowa,8900,PLN,sofa,220,90,95,45,Sofy,Salon
+BRN-CH-001,Fotel Relax Premium,Bernhardt,Luxe Living,Fotel relaksacyjny z funkcją odchylania,5500,PLN,chair,85,100,90,28,Fotele,Salon
+BRN-CH-002,Fotel Obrotowy Office,Bernhardt,Office Pro,Ergonomiczny fotel biurowy,3200,PLN,chair,65,120,65,18,Fotele,Biuro
+BRN-TB-001,Stół Jadalny Oak,Bernhardt,Natural Wood,Stół jadalny z litego drewna dębowego,7800,PLN,table,180,76,90,55,Stoły,Jadalnia
+BRN-TB-002,Stół Kawowy Glass,Bernhardt,Modern Line,Nowoczesny stół kawowy ze szklanym blatem,2100,PLN,table,120,45,60,22,Stoły,Salon
+BRN-BD-001,Łóżko King Size,Bernhardt,Bedroom Suite,Łóżko king size z tapicerowanym zagłówkiem,9500,PLN,bed,200,120,220,85,Łóżka,Sypialnia
+BRN-BD-002,Łóżko Queen Size,Bernhardt,Bedroom Suite,Łóżko queen size z drewnianą ramą,7200,PLN,bed,180,110,210,72,Łóżka,Sypialnia
+BRN-ST-001,Regał Biblioteczny,Bernhardt,Classic Line,Wysoki regał z 6 półkami,4300,PLN,storage,100,200,35,42,Regały,Salon
+BRN-ST-002,Komoda 6 Szuflad,Bernhardt,Bedroom Suite,Szeroka komoda z sześcioma szufladami,5100,PLN,storage,160,85,45,55,Komody,Sypialnia
