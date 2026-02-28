@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.product import BulkImportResult, BulkProductRow
+from app.schemas.intiaro import IntiaroImportReport
 from app.services.import_service import import_products, parse_csv, parse_json
+from app.services.intiaro_import import import_intiaro_product
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -113,3 +115,35 @@ async def import_from_api(
 
     result = import_products(db, mapped_rows)
     return result
+
+
+@router.post("/intiaro", response_model=IntiaroImportReport)
+async def import_from_intiaro(
+    url: str,
+    db: Session = Depends(get_db),
+):
+    """Import a product from Intiaro PIM API with full data mapping.
+    Uses dedicated models for each Intiaro data element (render_settings,
+    predicates, events, sectional elements, etc.) instead of storing
+    everything in extra_data."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(400, f"API returned error {e.response.status_code}: {str(e)}")
+    except Exception as e:
+        raise HTTPException(400, f"Failed to fetch from Intiaro API: {str(e)}")
+
+    if not isinstance(data, dict):
+        raise HTTPException(400, "Expected a single product instance object from Intiaro API")
+
+    report = import_intiaro_product(db, data)
+
+    if report["errors"]:
+        raise HTTPException(400, detail=report)
+
+    return report

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, Sliders, ChevronDown, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getProduct, updateProduct, addConfiguration, deleteConfiguration } from '../api/products'
-import type { Product, ProductConfiguration, ConfigurationOption } from '../types'
+import { getProduct, updateProduct, deleteProduct, addConfiguration, deleteConfiguration, addElement, deleteElement } from '../api/products'
+import type { Product, ProductConfiguration, ConfigurationOption, SectionalElement } from '../types'
 
 function ConfigurationEditor({
   productId,
@@ -186,6 +186,130 @@ function ConfigurationEditor({
   )
 }
 
+function ElementEditor({
+  productId,
+  elements,
+  onUpdate,
+}: {
+  productId: number
+  elements: SectionalElement[]
+  onUpdate: () => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ element_id: 0, name: '', file_id: '' })
+
+  const handleAdd = async () => {
+    if (!form.name) {
+      toast.error('Nazwa elementu jest wymagana')
+      return
+    }
+    try {
+      const nextId = elements.length > 0
+        ? Math.max(...elements.map(e => e.element_id ?? 0)) + 1
+        : 1
+      await addElement(productId, {
+        element_id: form.element_id || nextId,
+        name: form.name,
+        file_id: form.file_id || undefined,
+      })
+      toast.success('Element dodany')
+      setAdding(false)
+      setForm({ element_id: 0, name: '', file_id: '' })
+      onUpdate()
+    } catch {
+      toast.error('Błąd dodawania elementu')
+    }
+  }
+
+  const handleDelete = async (el: SectionalElement) => {
+    if (!confirm(`Usunąć element "${el.name || `#${el.element_id}`}"?`)) return
+    try {
+      await deleteElement(productId, el.id)
+      toast.success('Element usunięty')
+      onUpdate()
+    } catch {
+      toast.error('Błąd usuwania elementu')
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h4 style={{ margin: 0 }}>Elementy ({elements.length})</h4>
+        {!adding && (
+          <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+            <Plus size={14} /> Dodaj element
+          </button>
+        )}
+      </div>
+
+      {elements.length > 0 && (
+        <table style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+          <thead>
+            <tr>
+              <th>Element ID</th>
+              <th>Nazwa</th>
+              <th>File ID</th>
+              <th>Default Variables</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {elements.map(el => (
+              <tr key={el.id}>
+                <td><code>{el.element_id}</code></td>
+                <td>{el.name || '—'}</td>
+                <td>{el.file_id ? <code>{el.file_id}</code> : '—'}</td>
+                <td>
+                  {el.default_variables && Object.keys(el.default_variables).length > 0
+                    ? <span className="badge badge-info">{Object.keys(el.default_variables).length} zmiennych</span>
+                    : '—'}
+                </td>
+                <td>
+                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(el)}>
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {adding && (
+        <div className="config-item" style={{ borderColor: 'var(--primary)' }}>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Nazwa *</label>
+              <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="np. Fotel lewy" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Element ID</label>
+              <input className="form-input" type="number" value={form.element_id || ''} onChange={e => setForm(f => ({ ...f, element_id: Number(e.target.value) }))} placeholder="Auto" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">File ID</label>
+              <input className="form-input" value={form.file_id} onChange={e => setForm(f => ({ ...f, file_id: e.target.value }))} placeholder="Opcjonalnie" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" onClick={() => setAdding(false)}>Anuluj</button>
+            <button className="btn btn-primary" onClick={handleAdd}>
+              <Save size={14} /> Dodaj element
+            </button>
+          </div>
+        </div>
+      )}
+
+      {elements.length === 0 && !adding && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Brak elementów. Dodaj elementy, aby aktywować konfigurator wieloelementowy.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -222,6 +346,17 @@ export default function ProductDetailPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!confirm('Czy na pewno chcesz usunąć ten produkt? Tej operacji nie można cofnąć.')) return
+    try {
+      await deleteProduct(Number(id))
+      toast.success('Produkt usunięty')
+      navigate('/products')
+    } catch {
+      toast.error('Błąd usuwania produktu')
+    }
+  }
+
   if (!product) return <div>Ładowanie...</div>
 
   const set = (key: string, val: unknown) => setForm(f => ({ ...f, [key]: val }))
@@ -237,8 +372,14 @@ export default function ProductDetailPage() {
           </div>
         </div>
         <div className="btn-group">
+          <Link to={`/configurator?product=${product.id}`} className="btn btn-secondary">
+            <Sliders size={14} /> Konfigurator
+          </Link>
           {!editing ? (
-            <button className="btn btn-primary" onClick={() => setEditing(true)}>Edytuj</button>
+            <>
+              <button className="btn btn-primary" onClick={() => setEditing(true)}>Edytuj</button>
+              <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={14} /> Usuń</button>
+            </>
           ) : (
             <>
               <button className="btn btn-secondary" onClick={() => setEditing(false)}>Anuluj</button>
@@ -333,6 +474,16 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          <div className="card" style={{ marginTop: '1rem' }}>
+            <div className="card-body">
+              <ElementEditor
+                productId={product.id}
+                elements={product.sectional_elements || []}
+                onUpdate={load}
+              />
+            </div>
+          </div>
+
           {product.extra_data && Object.keys(product.extra_data).length > 0 && (
             <div className="card" style={{ marginTop: '1rem' }}>
               <div className="card-header">Dodatkowe dane</div>
@@ -345,6 +496,52 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Intiaro data sections */}
+      {product.intiaro_id && (
+        <div style={{ marginTop: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Dane Intiaro</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <IntiaroSection title="Features" data={product.features} />
+            <IntiaroSection title="Render Settings" data={product.render_settings} />
+            <IntiaroSection title={`Variable Groups (${product.variable_groups?.length || 0})`} data={product.variable_groups} />
+            <IntiaroSection title={`Choice Groups (${product.choice_groups?.length || 0})`} data={product.choice_groups} />
+            <IntiaroSection title={`Predicates (${product.predicates?.length || 0})`} data={product.predicates} />
+            <IntiaroSection title={`Events (${product.events?.length || 0})`} data={product.events} />
+            <IntiaroSection title={`Sectional Elements (${product.sectional_elements?.length || 0})`} data={product.sectional_elements} />
+            <IntiaroSection title="Menu Settings" data={product.menu_settings} />
+            <IntiaroSection title={`Attribute Mappings (${product.attribute_mappings?.length || 0})`} data={product.attribute_mappings} />
+            <IntiaroSection title={`Default Configurations (${product.default_configurations?.length || 0})`} data={product.default_configurations} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function IntiaroSection({ title, data }: { title: string; data: unknown }) {
+  const [open, setOpen] = useState(false)
+  const isEmpty = !data || (Array.isArray(data) && data.length === 0)
+
+  if (isEmpty) return null
+
+  return (
+    <div className="card">
+      <div
+        className="card-header"
+        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        onClick={() => setOpen(!open)}
+      >
+        <span>{title}</span>
+        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+      </div>
+      {open && (
+        <div className="card-body">
+          <pre style={{ fontSize: '0.8rem', overflow: 'auto', maxHeight: 250 }}>
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   )
 }

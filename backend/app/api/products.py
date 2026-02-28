@@ -1,11 +1,16 @@
 import math
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.database import get_db
 from app.models.product import (
     Product, Category, ProductConfiguration, ConfigurationOption, ProductImage,
+)
+from app.models.intiaro import (
+    ProductFeatures, RenderSettings, VariableGroup, ChoiceGroup,
+    ProductPredicate, ProductEvent, SectionalElement, MenuSettings,
+    AttributeMapping, DefaultConfiguration,
 )
 from app.schemas.product import (
     ProductCreate, ProductUpdate, ProductOut, ProductListOut,
@@ -14,6 +19,7 @@ from app.schemas.product import (
     CategoryCreate, CategoryOut,
     ProductImageCreate, ProductImageOut,
 )
+from app.schemas.intiaro import SectionalElementCreate, SectionalElementOut
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -99,9 +105,19 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     product = (
         db.query(Product)
         .options(
-            joinedload(Product.categories),
-            joinedload(Product.configurations).joinedload(ProductConfiguration.options),
-            joinedload(Product.images),
+            selectinload(Product.categories),
+            selectinload(Product.configurations).selectinload(ProductConfiguration.options),
+            selectinload(Product.images),
+            joinedload(Product.features),
+            joinedload(Product.render_settings),
+            selectinload(Product.variable_groups),
+            selectinload(Product.choice_groups),
+            selectinload(Product.predicates),
+            selectinload(Product.events),
+            selectinload(Product.sectional_elements),
+            joinedload(Product.menu_settings),
+            selectinload(Product.attribute_mappings),
+            selectinload(Product.default_configurations),
         )
         .filter(Product.id == product_id)
         .first()
@@ -181,6 +197,64 @@ def delete_configuration(product_id: int, config_id: int, db: Session = Depends(
     if not config:
         raise HTTPException(404, "Configuration not found")
     db.delete(config)
+    db.commit()
+
+
+# --- Sectional Elements ---
+
+@router.get("/{product_id}/elements", response_model=list[SectionalElementOut])
+def list_elements(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(404, "Product not found")
+    return db.query(SectionalElement).filter(SectionalElement.product_id == product_id).all()
+
+
+@router.post("/{product_id}/elements", response_model=SectionalElementOut, status_code=201)
+def add_element(product_id: int, data: SectionalElementCreate, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(404, "Product not found")
+    element = SectionalElement(product_id=product_id, **data.model_dump())
+    db.add(element)
+    if not product.sectional_builder:
+        product.sectional_builder = True
+    db.commit()
+    db.refresh(element)
+    return element
+
+
+@router.put("/{product_id}/elements/{element_db_id}", response_model=SectionalElementOut)
+def update_element(product_id: int, element_db_id: int, data: SectionalElementCreate, db: Session = Depends(get_db)):
+    element = (
+        db.query(SectionalElement)
+        .filter(SectionalElement.id == element_db_id, SectionalElement.product_id == product_id)
+        .first()
+    )
+    if not element:
+        raise HTTPException(404, "Element not found")
+    for k, v in data.model_dump(exclude_unset=True).items():
+        setattr(element, k, v)
+    db.commit()
+    db.refresh(element)
+    return element
+
+
+@router.delete("/{product_id}/elements/{element_db_id}", status_code=204)
+def delete_element(product_id: int, element_db_id: int, db: Session = Depends(get_db)):
+    element = (
+        db.query(SectionalElement)
+        .filter(SectionalElement.id == element_db_id, SectionalElement.product_id == product_id)
+        .first()
+    )
+    if not element:
+        raise HTTPException(404, "Element not found")
+    db.delete(element)
+    remaining = db.query(SectionalElement).filter(SectionalElement.product_id == product_id).count()
+    if remaining == 0:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if product:
+            product.sectional_builder = False
     db.commit()
 
 

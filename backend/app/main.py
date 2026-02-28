@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 from app.api import products, quotes, imports, categories
+import app.models.intiaro  # noqa: F401 — ensure Intiaro tables are registered
 
 Base.metadata.create_all(bind=engine)
 

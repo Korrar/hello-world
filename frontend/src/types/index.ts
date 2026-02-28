@@ -1,3 +1,15 @@
+import type {
+  ProductFeatures, RenderSettings, VariableGroup, ChoiceGroup,
+  ProductPredicate, ProductEvent, SectionalElement, MenuSettings,
+  AttributeMapping, DefaultConfiguration,
+} from './intiaro';
+
+export type {
+  ProductFeatures, RenderSettings, VariableGroup, ChoiceGroup,
+  ProductPredicate, ProductEvent, SectionalElement, MenuSettings,
+  AttributeMapping, DefaultConfiguration,
+} from './intiaro';
+
 export interface Category {
   id: number;
   name: string;
@@ -25,6 +37,16 @@ export interface ConfigurationOption {
   is_default: boolean;
   sort_order: number;
   extra_data?: Record<string, unknown>;
+  // Intiaro fields
+  slug?: string;
+  choice_group?: string;
+  tags?: string[];
+  icon?: string;
+  grade?: string;
+  predicate?: string;
+  texture_data?: Record<string, unknown>;
+  choice_attributes?: Record<string, unknown>;
+  element_id?: number;
 }
 
 export interface ProductConfiguration {
@@ -36,6 +58,23 @@ export interface ProductConfiguration {
   is_required: boolean;
   sort_order: number;
   options: ConfigurationOption[];
+  // Intiaro fields
+  slug?: string;
+  group?: string;
+  attribute_type?: string;
+  variable_group?: string;
+  visibility?: string;
+  always_on?: boolean;
+  is_com?: boolean;
+  predicate?: string;
+  display_text?: string;
+  dynamic_local_menu?: boolean;
+  application_methods?: unknown[];
+  available_choices_tags?: unknown[];
+  search?: Record<string, unknown> | unknown[];
+  filters?: Record<string, unknown> | unknown[];
+  sorting?: Record<string, unknown> | unknown[];
+  default_choice?: string;
 }
 
 export interface Product {
@@ -58,11 +97,39 @@ export interface Product {
   thumbnail_url?: string;
   model_3d_url?: string;
   extra_data?: Record<string, unknown>;
+  // Intiaro fields
+  intiaro_id?: number;
+  intiaro_product_id?: number;
+  product_system_version?: string;
+  sectional_builder?: boolean;
   created_at: string;
   updated_at: string;
   categories: Category[];
   configurations: ProductConfiguration[];
   images: ProductImage[];
+  // Intiaro relations
+  features?: ProductFeatures;
+  render_settings?: RenderSettings;
+  variable_groups: VariableGroup[];
+  choice_groups: ChoiceGroup[];
+  predicates: ProductPredicate[];
+  events: ProductEvent[];
+  sectional_elements: SectionalElement[];
+  menu_settings?: MenuSettings;
+  attribute_mappings: AttributeMapping[];
+  default_configurations: DefaultConfiguration[];
+}
+
+export interface ConfiguratorElementOutput {
+  element_id: number;
+  variables: Record<string, string>;
+}
+
+export interface ConfiguratorOutput {
+  configuration: {
+    elements?: ConfiguratorElementOutput[];
+    variables?: Record<string, string>;
+  };
 }
 
 export interface ProductListItem {

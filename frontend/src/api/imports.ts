@@ -1,5 +1,6 @@
 import api from './client';
 import type { BulkImportResult } from '../types';
+import type { IntiaroImportReport } from '../types/intiaro';
 
 export async function importFile(file: File): Promise<BulkImportResult> {
   const formData = new FormData();
@@ -17,5 +18,10 @@ export async function importJson(rows: Record<string, unknown>[]): Promise<BulkI
 
 export async function importFromApi(url: string): Promise<BulkImportResult> {
   const { data } = await api.post('/api/import/api-fetch', null, { params: { url } });
+  return data;
+}
+
+export async function importFromIntiaro(url: string): Promise<IntiaroImportReport> {
+  const { data } = await api.post('/api/import/intiaro', null, { params: { url } });
   return data;
 }

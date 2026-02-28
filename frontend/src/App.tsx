@@ -1,8 +1,10 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { Package, FileText, Upload, LayoutDashboard } from 'lucide-react'
+import { Package, FileText, Upload, LayoutDashboard, Sliders } from 'lucide-react'
 import ProductsPage from './pages/ProductsPage'
 import ProductDetailPage from './pages/ProductDetailPage'
+import ProductCreatorPage from './pages/ProductCreatorPage'
+import ConfiguratorPage from './pages/ConfiguratorPage'
 import QuotesPage from './pages/QuotesPage'
 import QuoteDetailPage from './pages/QuoteDetailPage'
 import ImportPage from './pages/ImportPage'
@@ -30,6 +32,10 @@ function App() {
             <FileText size={18} />
             <span>Wyceny</span>
           </NavLink>
+          <NavLink to="/configurator" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <Sliders size={18} />
+            <span>Konfigurator</span>
+          </NavLink>
           <NavLink to="/import" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Upload size={18} />
             <span>Import danych</span>
@@ -40,7 +46,10 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/create" element={<ProductCreatorPage />} />
+          <Route path="/products/:id/edit" element={<ProductCreatorPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
+          <Route path="/configurator" element={<ConfiguratorPage />} />
           <Route path="/quotes" element={<QuotesPage />} />
           <Route path="/quotes/:id" element={<QuoteDetailPage />} />
           <Route path="/import" element={<ImportPage />} />

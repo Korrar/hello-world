@@ -3,6 +3,12 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
+from app.schemas.intiaro import (
+    ProductFeaturesOut, RenderSettingsOut, VariableGroupOut, ChoiceGroupOut,
+    ProductPredicateOut, ProductEventOut, SectionalElementOut, MenuSettingsOut,
+    AttributeMappingOut, DefaultConfigurationOut,
+)
+
 
 # --- Category ---
 
@@ -47,6 +53,16 @@ class ConfigurationOptionBase(BaseModel):
     is_default: bool = False
     sort_order: int = 0
     extra_data: Optional[dict] = None
+    # Intiaro fields
+    slug: Optional[str] = None
+    choice_group: Optional[str] = None
+    tags: Optional[list] = None
+    icon: Optional[str] = None
+    grade: Optional[str] = None
+    predicate: Optional[str] = None
+    texture_data: Optional[dict] = None
+    choice_attributes: Optional[dict] = None
+    element_id: Optional[int] = None
 
 class ConfigurationOptionCreate(ConfigurationOptionBase):
     pass
@@ -65,6 +81,23 @@ class ProductConfigurationBase(BaseModel):
     config_type: str = "select"
     is_required: bool = False
     sort_order: int = 0
+    # Intiaro fields
+    slug: Optional[str] = None
+    group: Optional[str] = None
+    attribute_type: Optional[str] = None
+    variable_group: Optional[str] = None
+    visibility: Optional[str] = None
+    always_on: bool = False
+    is_com: bool = False
+    predicate: Optional[str] = None
+    display_text: Optional[str] = None
+    dynamic_local_menu: bool = False
+    application_methods: Optional[list] = None
+    available_choices_tags: Optional[list] = None
+    search: Optional[list | dict] = None
+    filters: Optional[list | dict] = None
+    sorting: Optional[list | dict] = None
+    default_choice: Optional[str] = None
 
 class ProductConfigurationCreate(ProductConfigurationBase):
     options: list[ConfigurationOptionCreate] = []
@@ -97,6 +130,11 @@ class ProductBase(BaseModel):
     thumbnail_url: Optional[str] = None
     model_3d_url: Optional[str] = None
     extra_data: Optional[dict] = None
+    # Intiaro fields
+    intiaro_id: Optional[int] = None
+    intiaro_product_id: Optional[int] = None
+    product_system_version: Optional[str] = None
+    sectional_builder: bool = False
 
 class ProductCreate(ProductBase):
     category_ids: list[int] = []
@@ -131,6 +169,17 @@ class ProductOut(ProductBase):
     categories: list[CategoryOut] = []
     configurations: list[ProductConfigurationOut] = []
     images: list[ProductImageOut] = []
+    # Intiaro relations
+    features: Optional[ProductFeaturesOut] = None
+    render_settings: Optional[RenderSettingsOut] = None
+    variable_groups: list[VariableGroupOut] = []
+    choice_groups: list[ChoiceGroupOut] = []
+    predicates: list[ProductPredicateOut] = []
+    events: list[ProductEventOut] = []
+    sectional_elements: list[SectionalElementOut] = []
+    menu_settings: Optional[MenuSettingsOut] = None
+    attribute_mappings: list[AttributeMappingOut] = []
+    default_configurations: list[DefaultConfigurationOut] = []
     model_config = {"from_attributes": True}
 
 class ProductListOut(BaseModel):

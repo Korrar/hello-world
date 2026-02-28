@@ -52,12 +52,30 @@ class Product(Base):
     model_3d_url = Column(String(1000), nullable=True)
     extra_data = Column(JSON, nullable=True)
 
+    # Intiaro-specific columns
+    intiaro_id = Column(Integer, nullable=True)
+    intiaro_product_id = Column(Integer, nullable=True)
+    product_system_version = Column(String(100), nullable=True)
+    sectional_builder = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     categories = relationship("Category", secondary=product_category, back_populates="products")
     configurations = relationship("ProductConfiguration", back_populates="product", cascade="all, delete-orphan")
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
+
+    # Intiaro relationships
+    features = relationship("ProductFeatures", back_populates="product", uselist=False, cascade="all, delete-orphan")
+    render_settings = relationship("RenderSettings", back_populates="product", uselist=False, cascade="all, delete-orphan")
+    variable_groups = relationship("VariableGroup", back_populates="product", cascade="all, delete-orphan")
+    choice_groups = relationship("ChoiceGroup", back_populates="product", cascade="all, delete-orphan")
+    predicates = relationship("ProductPredicate", back_populates="product", cascade="all, delete-orphan")
+    events = relationship("ProductEvent", back_populates="product", cascade="all, delete-orphan")
+    sectional_elements = relationship("SectionalElement", back_populates="product", cascade="all, delete-orphan")
+    menu_settings = relationship("MenuSettings", back_populates="product", uselist=False, cascade="all, delete-orphan")
+    attribute_mappings = relationship("AttributeMapping", back_populates="product", cascade="all, delete-orphan")
+    default_configurations = relationship("DefaultConfiguration", back_populates="product", cascade="all, delete-orphan")
 
 
 class ProductImage(Base):
@@ -83,6 +101,24 @@ class ProductConfiguration(Base):
     is_required = Column(Boolean, default=False)
     sort_order = Column(Integer, default=0)
 
+    # Intiaro-specific columns
+    slug = Column(String(255), nullable=True)
+    group = Column(String(255), nullable=True)
+    attribute_type = Column(String(100), nullable=True)
+    variable_group = Column(String(255), nullable=True)
+    visibility = Column(String(50), nullable=True)
+    always_on = Column(Boolean, default=False)
+    is_com = Column(Boolean, default=False)
+    predicate = Column(String(255), nullable=True)
+    display_text = Column(Text, nullable=True)
+    dynamic_local_menu = Column(Boolean, default=False)
+    application_methods = Column(JSON, nullable=True)
+    available_choices_tags = Column(JSON, nullable=True)
+    search = Column(JSON, nullable=True)
+    filters = Column(JSON, nullable=True)
+    sorting = Column(JSON, nullable=True)
+    default_choice = Column(String(255), nullable=True)
+
     product = relationship("Product", back_populates="configurations")
     options = relationship("ConfigurationOption", back_populates="configuration", cascade="all, delete-orphan")
 
@@ -101,6 +137,17 @@ class ConfigurationOption(Base):
     is_default = Column(Boolean, default=False)
     sort_order = Column(Integer, default=0)
     extra_data = Column(JSON, nullable=True)
+
+    # Intiaro-specific columns
+    slug = Column(String(255), nullable=True)
+    choice_group = Column(String(255), nullable=True)
+    tags = Column(JSON, nullable=True)
+    icon = Column(String(1000), nullable=True)
+    grade = Column(String(255), nullable=True)
+    predicate = Column(String(255), nullable=True)
+    texture_data = Column(JSON, nullable=True)
+    choice_attributes = Column(JSON, nullable=True)
+    element_id = Column(Integer, nullable=True)
 
     configuration = relationship("ProductConfiguration", back_populates="options")
 
