@@ -60,9 +60,14 @@ export interface ProductPredicate {
 export interface ProductEvent {
   id: number;
   product_id: number;
-  event_type?: string;
+  trigger_variable?: string;
+  source_type?: string;
   source_variable?: string;
   destinations?: string[];
+  predicate_key?: string;
+  condition_attribute?: string;
+  condition_operator?: string;
+  condition_compare_to?: string;
 }
 
 export interface SectionalElement {
@@ -70,6 +75,7 @@ export interface SectionalElement {
   product_id: number;
   element_id?: number;
   name?: string;
+  display_name?: string;
   file_id?: string;
   default_variables?: Record<string, unknown>;
   includes?: Record<string, unknown>;

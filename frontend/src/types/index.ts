@@ -75,6 +75,7 @@ export interface ProductConfiguration {
   filters?: Record<string, unknown> | unknown[];
   sorting?: Record<string, unknown> | unknown[];
   default_choice?: string;
+  element_id?: number;
 }
 
 export interface Product {
@@ -82,6 +83,8 @@ export interface Product {
   sku: string;
   name: string;
   manufacturer?: string;
+  brand?: string;
+  product_kind?: string;
   collection?: string;
   description?: string;
   base_price: number;
@@ -118,10 +121,23 @@ export interface Product {
   menu_settings?: MenuSettings;
   attribute_mappings: AttributeMapping[];
   default_configurations: DefaultConfiguration[];
+  choice_overrides: ChoiceOverride[];
+  parent_product_id?: number;
+  model_intiaro_id?: number;
+  sub_products_count?: number;
+}
+
+export interface ChoiceOverride {
+  id: number;
+  product_id: number;
+  option_id: number;
+  element_id?: number;
+  configuration_id?: number;
+  active: boolean;
 }
 
 export interface ConfiguratorElementOutput {
-  element_id: number;
+  name: string;
   variables: Record<string, string>;
 }
 
@@ -137,12 +153,17 @@ export interface ProductListItem {
   sku: string;
   name: string;
   manufacturer?: string;
+  brand?: string;
+  product_kind?: string;
   collection?: string;
   base_price: number;
   currency: string;
   is_active: boolean;
   product_type?: string;
   thumbnail_url?: string;
+  parent_product_id?: number;
+  model_intiaro_id?: number;
+  sub_products_count?: number;
   created_at: string;
 }
 

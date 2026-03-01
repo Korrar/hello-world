@@ -105,9 +105,14 @@ class ProductPredicateOut(ProductPredicateBase):
 # --- ProductEvent ---
 
 class ProductEventBase(BaseModel):
-    event_type: Optional[str] = None
+    trigger_variable: Optional[str] = None
+    source_type: Optional[str] = "variable"
     source_variable: Optional[str] = None
     destinations: Optional[list] = None
+    predicate_key: Optional[str] = None
+    condition_attribute: Optional[str] = None
+    condition_operator: Optional[str] = None
+    condition_compare_to: Optional[str] = None
 
 class ProductEventCreate(ProductEventBase):
     pass
@@ -123,6 +128,7 @@ class ProductEventOut(ProductEventBase):
 class SectionalElementBase(BaseModel):
     element_id: Optional[int] = None
     name: Optional[str] = None
+    display_name: Optional[str] = None
     file_id: Optional[str] = None
     default_variables: Optional[dict] = None
     includes: Optional[dict] = None

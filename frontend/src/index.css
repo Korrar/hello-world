@@ -819,6 +819,34 @@ tr:hover {
   color: #1565c0;
 }
 
+/* Attribute header clickable for collapse */
+.attribute-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-bottom: 0.5rem;
+  user-select: none;
+}
+
+.attribute-header:hover {
+  color: var(--primary);
+}
+
+/* Search input inside attribute */
+.choice-search {
+  padding: 0.35rem 0.6rem 0.35rem 2rem;
+  font-size: 0.8rem;
+}
+
+/* Disabled choice card */
+.choice-card.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Collapsible Section */
 .collapsible-section {
   border-bottom: 1px solid var(--border);
@@ -826,6 +854,88 @@ tr:hover {
 
 .collapsible-section:last-child {
   border-bottom: none;
+}
+
+/* Tree Editor */
+.tree-section {
+  border-left: 3px solid var(--border);
+  margin-left: 0.5rem;
+  padding-left: 1rem;
+}
+
+.tree-node-header {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+
+.tree-node-header:hover {
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.choice-row-tree {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.15rem;
+}
+
+.choice-row-tree:hover {
+  background: var(--bg);
+}
+
+.choice-deactivated {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.scope-badge-global {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+.scope-badge-local {
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+.scope-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  min-width: 140px;
+  margin-top: 0.25rem;
+}
+
+.scope-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.scope-dropdown button:hover {
+  background: var(--bg);
 }
 
 /* Responsive */

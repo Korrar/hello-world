@@ -258,43 +258,315 @@ def map_choices(
     return result
 
 
-def map_predicates(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map Intiaro 'predicates' dict to ProductPredicate fields."""
-    predicates = data.get("predicates")
-    if not predicates or not isinstance(predicates, dict):
-        return []
+_OPERATOR_LABELS = {
+    "equal": "jest równy",
+    "equals": "jest równy",
+    "not_equal": "nie jest równy",
+    "in": "jest jednym z",
+    "not_in": "nie jest jednym z",
+}
 
+
+def map_predicates(
+    data: dict[str, Any],
+    mapped_attributes: list[dict[str, Any]] | None = None,
+    choices_by_attr: dict[str, list[dict[str, Any]]] | None = None,
+    exclude_keys: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Map Intiaro predicates with cross-referencing: find targets from attributes/choices,
+    then look up conditions from the 'predicates' dict.
+
+    Step 1: Scan attributes & choices for 'predicate' field → determines what should be grayed out
+    Step 2: Look up predicate key in 'predicates' dict → determines when it should be grayed out
+    Step 3: Generate descriptive name combining target + condition
+
+    exclude_keys: predicate keys already consumed by events — skip them.
+    """
+    predicates_dict = data.get("predicates")
+    if not isinstance(predicates_dict, dict):
+        predicates_dict = {}
+    if exclude_keys is None:
+        exclude_keys = set()
+
+    # --- Step 1: Collect targets — what has a predicate assigned? ---
+    # predicate_key → list of {target_attr, target_choice}
+    targets_by_key: dict[str, list[dict[str, str]]] = {}
+
+    # Build attr display name lookup
+    attr_labels: dict[str, str] = {}  # slug → display_name
+    if mapped_attributes:
+        for attr in mapped_attributes:
+            slug = attr.get("slug", "") or attr.get("name", "")
+            label = attr.get("display_name") or attr.get("name", "")
+            if slug:
+                attr_labels[slug] = label
+
+            # Check if attribute itself has a predicate
+            pred_key = attr.get("predicate", "")
+            if pred_key:
+                targets_by_key.setdefault(pred_key, []).append({
+                    "target_attr": slug,
+                    "target_choice": "",
+                })
+
+    if choices_by_attr:
+        for attr_slug, options in choices_by_attr.items():
+            for opt in options:
+                pred_key = opt.get("predicate", "")
+                if pred_key:
+                    choice_slug = opt.get("slug", "") or opt.get("value", "")
+                    targets_by_key.setdefault(pred_key, []).append({
+                        "target_attr": attr_slug,
+                        "target_choice": choice_slug,
+                    })
+
+    # --- Step 2 & 3: Build predicates with cross-referenced data ---
+    processed_keys: set[str] = set()
+    consumed_keys: set[str] = set()  # keys used only as condition providers via arguments
     result = []
-    for key, pred in predicates.items():
+
+    # Process all predicate keys that are referenced by targets
+    for pred_key, target_list in targets_by_key.items():
+        processed_keys.add(pred_key)
+        if pred_key in exclude_keys:
+            continue
+
+        # Look up condition — follow arguments chain if needed
+        source_attr, operator, compare_to_str, pred_type = _resolve_predicate_condition(
+            pred_key, predicates_dict, _consumed=consumed_keys
+        )
+
+        # Valid condition requires both attribute and compare_to
+        has_condition = bool(source_attr and compare_to_str)
+
+        # Generate descriptive name from first target
+        name = _gen_predicate_name(
+            target_list[0],
+            source_attr if has_condition else "",
+            operator if has_condition else "",
+            compare_to_str if has_condition else "",
+            attr_labels,
+        )
+
+        result.append({
+            "predicate_key": str(pred_key),
+            "name": name,
+            "type": pred_type or "variable",
+            "attribute": source_attr if has_condition else "",
+            "operator": operator if has_condition else "",
+            "compare_to": compare_to_str if has_condition else "",
+        })
+
+    # Also include predicates from dict that weren't referenced by any target
+    # and aren't pure condition providers consumed via arguments
+    for key, pred in predicates_dict.items():
+        if key in processed_keys or key in consumed_keys or key in exclude_keys:
+            continue
         if not isinstance(pred, dict):
             continue
+        src, op, cmp, ptype = _resolve_predicate_condition(key, predicates_dict, _consumed=consumed_keys)
+        has_cond = bool(src and cmp)
+        pred_name = pred.get("name", "")
+        if not has_cond:
+            pred_name = f"[Bez warunku] {pred_name or key}"
         result.append({
             "predicate_key": str(key),
-            "name": pred.get("name", ""),
-            "type": pred.get("type", ""),
-            "attribute": pred.get("attribute", ""),
-            "operator": pred.get("operator", ""),
-            "compare_to": str(pred.get("compare_to", "")) if pred.get("compare_to") is not None else "",
+            "name": pred_name,
+            "type": ptype or pred.get("type", ""),
+            "attribute": src if has_cond else "",
+            "operator": op if has_cond else "",
+            "compare_to": cmp if has_cond else "",
         })
+
     return result
 
 
-def map_events(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map Intiaro 'events' dict to ProductEvent fields."""
-    events = data.get("events")
-    if not events or not isinstance(events, dict):
+def _resolve_predicate_condition(
+    pred_key: str,
+    predicates_dict: dict[str, Any],
+    _visited: set[str] | None = None,
+    _consumed: set[str] | None = None,
+) -> tuple[str, str, str, str]:
+    """Resolve predicate condition, following the 'arguments' chain if needed.
+
+    Returns (attribute, operator, compare_to, type).
+    If the predicate itself has attribute+compare_to, use those directly.
+    Otherwise, check its 'arguments' list for references to other predicates
+    that may contain the actual condition.
+
+    Keys followed via 'arguments' are added to _consumed so they can be
+    excluded from the final predicate list (they are pure conditions, not
+    standalone rules).
+    """
+    if _visited is None:
+        _visited = set()
+
+    # Prevent infinite loops
+    if pred_key in _visited:
+        return "", "", "", ""
+    _visited.add(pred_key)
+
+    pred_def = predicates_dict.get(pred_key, {})
+    if not isinstance(pred_def, dict):
+        return "", "", "", ""
+
+    source_attr = pred_def.get("attribute", "")
+    operator = pred_def.get("operator", "")
+    compare_to = pred_def.get("compare_to")
+    compare_to_str = str(compare_to) if compare_to is not None else ""
+    pred_type = pred_def.get("type", "")
+
+    # If this predicate has a direct condition, use it
+    if source_attr and compare_to_str:
+        return source_attr, operator, compare_to_str, pred_type
+
+    # Otherwise, follow the arguments chain
+    arguments = pred_def.get("arguments")
+    if arguments and isinstance(arguments, list):
+        for arg_key in arguments:
+            if not isinstance(arg_key, str):
+                continue
+            # Mark as consumed — this key is just a condition provider
+            if _consumed is not None:
+                _consumed.add(arg_key)
+            arg_attr, arg_op, arg_cmp, arg_type = _resolve_predicate_condition(
+                arg_key, predicates_dict, _visited, _consumed
+            )
+            if arg_attr and arg_cmp:
+                return arg_attr, arg_op, arg_cmp, pred_type or arg_type
+
+    return source_attr, operator, compare_to_str, pred_type
+
+
+def _gen_predicate_name(
+    target: dict[str, str],
+    source_attr: str,
+    operator: str,
+    compare_to: str,
+    attr_labels: dict[str, str],
+) -> str:
+    """Generate a descriptive predicate name like the frontend PredicateEditor does."""
+    target_attr = target.get("target_attr", "")
+    target_choice = target.get("target_choice", "")
+
+    # Build target label
+    if target_choice:
+        if target_attr:
+            attr_label = attr_labels.get(target_attr, target_attr)
+            target_label = f'"{target_choice}" w "{attr_label}"'
+        else:
+            target_label = f'"{target_choice}" (wszystkie atrybuty)'
+    elif target_attr:
+        attr_label = attr_labels.get(target_attr, target_attr)
+        target_label = f'atrybut "{attr_label}"'
+    else:
+        target_label = "?"
+
+    # No condition → incomplete predicate
+    if not source_attr or not compare_to:
+        return f"[Bez warunku] Wyszarz {target_label}"
+
+    source_label = attr_labels.get(source_attr, source_attr)
+    op_label = _OPERATOR_LABELS.get(operator, operator or "?")
+    return f'Wyszarz {target_label} gdy "{source_label}" {op_label} "{compare_to}"'
+
+
+def collect_event_predicate_keys(data: dict[str, Any]) -> set[str]:
+    """Scan events for predicate keys so they can be excluded from the predicates module."""
+    keys: set[str] = set()
+    events_wrapper = data.get("events")
+    if not events_wrapper or not isinstance(events_wrapper, dict):
+        return keys
+    event_list = events_wrapper.get("events")
+    if not event_list or not isinstance(event_list, list):
+        return keys
+    predicates_dict = data.get("predicates", {}) or {}
+    for ev in event_list:
+        if not isinstance(ev, dict):
+            continue
+        for action in (ev.get("actions") or []):
+            pred_key = action.get("predicate")
+            if pred_key:
+                keys.add(str(pred_key))
+                # Also collect keys consumed via arguments chain
+                _collect_argument_keys(str(pred_key), predicates_dict, keys)
+    return keys
+
+
+def _collect_argument_keys(pred_key: str, predicates_dict: dict[str, Any], collected: set[str], visited: set[str] | None = None):
+    """Recursively collect all predicate keys referenced via arguments."""
+    if visited is None:
+        visited = set()
+    if pred_key in visited:
+        return
+    visited.add(pred_key)
+    pred_def = predicates_dict.get(pred_key, {})
+    if not isinstance(pred_def, dict):
+        return
+    arguments = pred_def.get("arguments")
+    if arguments and isinstance(arguments, list):
+        for arg_key in arguments:
+            if isinstance(arg_key, str):
+                collected.add(arg_key)
+                _collect_argument_keys(arg_key, predicates_dict, collected, visited)
+
+
+def map_events(
+    data: dict[str, Any],
+    predicates_dict: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Map Intiaro events to ProductEvent rows.
+
+    Parses the structure: events.events[].actions[] →
+    one row per action with trigger_variable, source, destinations, condition.
+    """
+    events_wrapper = data.get("events")
+    if not events_wrapper or not isinstance(events_wrapper, dict):
         return []
 
+    event_list = events_wrapper.get("events")
+    if not event_list or not isinstance(event_list, list):
+        return []
+
+    if predicates_dict is None:
+        predicates_dict = data.get("predicates", {}) or {}
+
     result = []
-    # events can be structured as {event_type: {source: [destinations]}}
-    for event_type, event_data in events.items():
-        if not isinstance(event_data, dict):
+    for ev in event_list:
+        if not isinstance(ev, dict):
             continue
-        for source, destinations in event_data.items():
+        trigger_vars = ev.get("variables", [])
+        trigger_var = trigger_vars[0] if trigger_vars else ""
+
+        for action in (ev.get("actions") or []):
+            if not isinstance(action, dict):
+                continue
+
+            source_type = action.get("source", "variable")
+            source_variable = action.get("variable") or action.get("value", "")
+            destinations = action.get("destination", [])
+            if isinstance(destinations, str):
+                destinations = [destinations]
+
+            pred_key = action.get("predicate")
+            cond_attr = ""
+            cond_op = ""
+            cond_cmp = ""
+
+            if pred_key and predicates_dict:
+                cond_attr, cond_op, cond_cmp, _ = _resolve_predicate_condition(
+                    str(pred_key), predicates_dict
+                )
+
             result.append({
-                "event_type": event_type,
-                "source_variable": source,
-                "destinations": destinations if isinstance(destinations, list) else [destinations],
+                "trigger_variable": trigger_var,
+                "source_type": source_type,
+                "source_variable": source_variable,
+                "destinations": destinations,
+                "predicate_key": str(pred_key) if pred_key else None,
+                "condition_attribute": cond_attr or None,
+                "condition_operator": cond_op or None,
+                "condition_compare_to": cond_cmp or None,
             })
     return result
 

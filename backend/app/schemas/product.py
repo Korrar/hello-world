@@ -98,6 +98,7 @@ class ProductConfigurationBase(BaseModel):
     filters: Optional[list | dict] = None
     sorting: Optional[list | dict] = None
     default_choice: Optional[str] = None
+    element_id: Optional[int] = None
 
 class ProductConfigurationCreate(ProductConfigurationBase):
     options: list[ConfigurationOptionCreate] = []
@@ -109,12 +110,32 @@ class ProductConfigurationOut(ProductConfigurationBase):
     model_config = {"from_attributes": True}
 
 
+# --- Choice Override ---
+
+class ChoiceOverrideBase(BaseModel):
+    option_id: int
+    element_id: Optional[int] = None
+    configuration_id: Optional[int] = None
+    active: bool = False
+
+class ChoiceOverrideCreate(ChoiceOverrideBase):
+    pass
+
+class ChoiceOverrideOut(ChoiceOverrideBase):
+    id: int
+    product_id: int
+    model_config = {"from_attributes": True}
+
+
 # --- Product ---
 
 class ProductBase(BaseModel):
+    model_config = {"protected_namespaces": ()}
     sku: str
     name: str
     manufacturer: Optional[str] = None
+    brand: Optional[str] = None
+    product_kind: str = "product"
     collection: Optional[str] = None
     description: Optional[str] = None
     base_price: float = 0.0
@@ -135,6 +156,8 @@ class ProductBase(BaseModel):
     intiaro_product_id: Optional[int] = None
     product_system_version: Optional[str] = None
     sectional_builder: bool = False
+    model_intiaro_id: Optional[int] = None
+    parent_product_id: Optional[int] = None
 
 class ProductCreate(ProductBase):
     category_ids: list[int] = []
@@ -142,9 +165,11 @@ class ProductCreate(ProductBase):
     images: list[ProductImageCreate] = []
 
 class ProductUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     sku: Optional[str] = None
     name: Optional[str] = None
     manufacturer: Optional[str] = None
+    brand: Optional[str] = None
     collection: Optional[str] = None
     description: Optional[str] = None
     base_price: Optional[float] = None
@@ -161,6 +186,7 @@ class ProductUpdate(BaseModel):
     model_3d_url: Optional[str] = None
     extra_data: Optional[dict] = None
     category_ids: Optional[list[int]] = None
+    model_intiaro_id: Optional[int] = None
 
 class ProductOut(ProductBase):
     id: int
@@ -180,21 +206,40 @@ class ProductOut(ProductBase):
     menu_settings: Optional[MenuSettingsOut] = None
     attribute_mappings: list[AttributeMappingOut] = []
     default_configurations: list[DefaultConfigurationOut] = []
-    model_config = {"from_attributes": True}
+    choice_overrides: list[ChoiceOverrideOut] = []
+    sub_products_count: int = 0
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
 
 class ProductListOut(BaseModel):
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
     id: int
     sku: str
     name: str
     manufacturer: Optional[str] = None
+    brand: Optional[str] = None
+    product_kind: str = "product"
     collection: Optional[str] = None
     base_price: float
     currency: str
     is_active: bool
     product_type: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    model_intiaro_id: Optional[int] = None
+    parent_product_id: Optional[int] = None
+    sub_products_count: int = 0
     created_at: datetime
-    model_config = {"from_attributes": True}
+
+
+class SubProductCreate(BaseModel):
+    sku: str
+    name: str
+    manufacturer: Optional[str] = None
+    brand: Optional[str] = None
+
+
+class PresetCreate(BaseModel):
+    sku: str
+    name: str
 
 
 # --- Quote ---

@@ -31,9 +31,11 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
-    sku = Column(String(100), unique=True, nullable=False, index=True)
+    sku = Column(String(100), nullable=False, index=True)
     name = Column(String(500), nullable=False)
     manufacturer = Column(String(255), nullable=True)
+    brand = Column(String(255), nullable=True)
+    product_kind = Column(String(20), default="product")  # product, sub_product, preset
     collection = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     base_price = Column(Float, default=0.0)
@@ -58,6 +60,9 @@ class Product(Base):
     product_system_version = Column(String(100), nullable=True)
     sectional_builder = Column(Boolean, default=False)
 
+    model_intiaro_id = Column(Integer, nullable=True)
+    parent_product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -76,6 +81,9 @@ class Product(Base):
     menu_settings = relationship("MenuSettings", back_populates="product", uselist=False, cascade="all, delete-orphan")
     attribute_mappings = relationship("AttributeMapping", back_populates="product", cascade="all, delete-orphan")
     default_configurations = relationship("DefaultConfiguration", back_populates="product", cascade="all, delete-orphan")
+    choice_overrides = relationship("ChoiceOverride", back_populates="product", cascade="all, delete-orphan")
+
+    parent_product = relationship("Product", remote_side=[id], backref="sub_products", foreign_keys=[parent_product_id])
 
 
 class ProductImage(Base):
@@ -118,6 +126,7 @@ class ProductConfiguration(Base):
     filters = Column(JSON, nullable=True)
     sorting = Column(JSON, nullable=True)
     default_choice = Column(String(255), nullable=True)
+    element_id = Column(Integer, nullable=True)  # null = global, value = local for element
 
     product = relationship("Product", back_populates="configurations")
     options = relationship("ConfigurationOption", back_populates="configuration", cascade="all, delete-orphan")
@@ -150,6 +159,20 @@ class ConfigurationOption(Base):
     element_id = Column(Integer, nullable=True)
 
     configuration = relationship("ProductConfiguration", back_populates="options")
+
+
+class ChoiceOverride(Base):
+    __tablename__ = "choice_overrides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    option_id = Column(Integer, ForeignKey("configuration_options.id", ondelete="CASCADE"), nullable=False)
+    element_id = Column(Integer, nullable=True)         # null = per product
+    configuration_id = Column(Integer, ForeignKey("product_configurations.id", ondelete="CASCADE"), nullable=True)
+    active = Column(Boolean, default=False, nullable=False)
+
+    product = relationship("Product", back_populates="choice_overrides")
+    option = relationship("ConfigurationOption")
 
 
 class Quote(Base):

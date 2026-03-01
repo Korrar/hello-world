@@ -89,9 +89,20 @@ class ProductEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    event_type = Column(String(100), nullable=True)
+
+    # Trigger — when this variable changes
+    trigger_variable = Column(String(255), nullable=True)
+
+    # Action — copy value from source to destinations
+    source_type = Column(String(50), default="variable")  # "variable" or "value"
     source_variable = Column(String(255), nullable=True)
     destinations = Column(JSON, nullable=True)
+
+    # Condition (resolved from predicate, optional)
+    predicate_key = Column(String(255), nullable=True)
+    condition_attribute = Column(String(255), nullable=True)
+    condition_operator = Column(String(50), nullable=True)
+    condition_compare_to = Column(String(255), nullable=True)
 
     product = relationship("Product", back_populates="events")
 
@@ -103,6 +114,7 @@ class SectionalElement(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     element_id = Column(Integer, nullable=True)
     name = Column(String(255), nullable=True)
+    display_name = Column(String(255), nullable=True)
     file_id = Column(String(255), nullable=True)
     default_variables = Column(JSON, nullable=True)
     includes = Column(JSON, nullable=True)

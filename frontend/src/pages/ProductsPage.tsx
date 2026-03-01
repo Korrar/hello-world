@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Trash2, Eye, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getProducts, deleteProduct, deleteProducts, createProduct } from '../api/products'
+import { getProducts, deleteProduct, deleteProducts, createProduct, getSubProducts, getPresets, getDeleteInfo } from '../api/products'
 import type { ProductListItem, PaginatedResponse } from '../types'
 
 function ProductFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
@@ -127,6 +127,10 @@ export default function ProductsPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
+  const [subProductsCache, setSubProductsCache] = useState<Map<number, ProductListItem[]>>(new Map())
+  const [expandedSubProducts, setExpandedSubProducts] = useState<Set<number>>(new Set())
+  const [presetsCache, setPresetsCache] = useState<Map<number, ProductListItem[]>>(new Map())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -143,8 +147,15 @@ export default function ProductsPage() {
   useEffect(() => { load() }, [load])
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Czy na pewno chcesz usunąć ten produkt?')) return
     try {
+      const info = await getDeleteInfo(id)
+      const parts: string[] = []
+      if (info.sub_products_count > 0) parts.push(`${info.sub_products_count} sub-produkt(ów)`)
+      if (info.presets_count > 0) parts.push(`${info.presets_count} preset(ów)`)
+      const extra = parts.length > 0
+        ? `\n\nZostanie również usunięte: ${parts.join(', ')}.`
+        : ''
+      if (!confirm(`Czy na pewno chcesz usunąć ten produkt?${extra}`)) return
       await deleteProduct(id)
       toast.success('Produkt usunięty')
       load()
@@ -179,6 +190,44 @@ export default function ProductsPage() {
     if (!data) return
     if (selected.size === data.items.length) setSelected(new Set())
     else setSelected(new Set(data.items.map(p => p.id)))
+  }
+
+  const toggleExpand = async (productId: number) => {
+    const next = new Set(expandedProducts)
+    if (next.has(productId)) {
+      next.delete(productId)
+      setExpandedProducts(next)
+      return
+    }
+    next.add(productId)
+    setExpandedProducts(next)
+    if (!subProductsCache.has(productId)) {
+      try {
+        const subs = await getSubProducts(productId)
+        setSubProductsCache(prev => new Map(prev).set(productId, subs))
+      } catch {
+        toast.error('Blad ladowania sub-produktow')
+      }
+    }
+  }
+
+  const toggleExpandSub = async (subId: number) => {
+    const next = new Set(expandedSubProducts)
+    if (next.has(subId)) {
+      next.delete(subId)
+      setExpandedSubProducts(next)
+      return
+    }
+    next.add(subId)
+    setExpandedSubProducts(next)
+    if (!presetsCache.has(subId)) {
+      try {
+        const presets = await getPresets(subId)
+        setPresetsCache(prev => new Map(prev).set(subId, presets))
+      } catch {
+        toast.error('Blad ladowania presetow')
+      }
+    }
   }
 
   return (
@@ -216,7 +265,7 @@ export default function ProductsPage() {
                 </th>
                 <th>SKU</th>
                 <th>Nazwa</th>
-                <th>Producent</th>
+                <th>Producent / Brand</th>
                 <th>Typ</th>
                 <th>Cena</th>
                 <th>Status</th>
@@ -232,36 +281,150 @@ export default function ProductsPage() {
                   Brak produktów. Dodaj pierwszy produkt lub zaimportuj dane.
                 </td></tr>
               )}
-              {!loading && data?.items.map(p => (
-                <tr key={p.id}>
-                  <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
-                  <td><code style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {p.thumbnail_url && <img src={p.thumbnail_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />}
-                      <span style={{ fontWeight: 500 }}>{p.name}</span>
-                    </div>
-                  </td>
-                  <td>{p.manufacturer || '—'}</td>
-                  <td>{p.product_type || '—'}</td>
-                  <td style={{ fontWeight: 600 }}>{p.base_price.toLocaleString()} {p.currency}</td>
-                  <td>
-                    <span className={`badge ${p.is_active ? 'badge-success' : 'badge-danger'}`}>
-                      {p.is_active ? 'Aktywny' : 'Nieaktywny'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="btn-group">
-                      <Link to={`/products/${p.id}`} className="btn btn-secondary btn-sm btn-icon" title="Szczegóły">
-                        <Eye size={14} />
-                      </Link>
-                      <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(p.id)} title="Usuń">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {!loading && data?.items.map(p => {
+                const hasSubs = (p.sub_products_count ?? 0) > 0
+                const isExpanded = expandedProducts.has(p.id)
+                const subs = subProductsCache.get(p.id) || []
+                return (
+                  <React.Fragment key={p.id}>
+                    <tr>
+                      <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
+                      <td><code style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {hasSubs && (
+                            <button
+                              className="btn btn-icon"
+                              style={{ padding: 0, minWidth: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}
+                              onClick={() => toggleExpand(p.id)}
+                            >
+                              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            </button>
+                          )}
+                          {p.thumbnail_url && <img src={p.thumbnail_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />}
+                          <span style={{ fontWeight: 500 }}>{p.name}</span>
+                          {hasSubs && (
+                            <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>
+                              {p.sub_products_count} sub
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {p.manufacturer || '—'}
+                        {p.brand && p.brand !== p.manufacturer && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Brand: {p.brand}</div>
+                        )}
+                      </td>
+                      <td>{p.product_type || '—'}</td>
+                      <td style={{ fontWeight: 600 }}>{p.base_price.toLocaleString()} {p.currency}</td>
+                      <td>
+                        <span className={`badge ${p.is_active ? 'badge-success' : 'badge-danger'}`}>
+                          {p.is_active ? 'Aktywny' : 'Nieaktywny'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="btn-group">
+                          <Link to={`/products/${p.id}`} className="btn btn-secondary btn-sm btn-icon" title="Szczegóły">
+                            <Eye size={14} />
+                          </Link>
+                          <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(p.id)} title="Usuń">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && subs.map(sub => {
+                      const hasPresets = (sub.sub_products_count ?? 0) > 0
+                      const isSubExpanded = expandedSubProducts.has(sub.id)
+                      const presets = presetsCache.get(sub.id) || []
+                      return (
+                        <React.Fragment key={sub.id}>
+                          <tr style={{ background: 'var(--bg-hover, #f8f9fa)' }}>
+                            <td></td>
+                            <td><code style={{ fontSize: '0.85rem' }}>{sub.sku}</code></td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2rem' }}>
+                                {hasPresets && (
+                                  <button
+                                    className="btn btn-icon"
+                                    style={{ padding: 0, minWidth: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    onClick={() => toggleExpandSub(sub.id)}
+                                  >
+                                    {isSubExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                  </button>
+                                )}
+                                {sub.thumbnail_url && <img src={sub.thumbnail_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />}
+                                <span style={{ fontWeight: 500 }}>{sub.name}</span>
+                                <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>sub-produkt</span>
+                                {hasPresets && (
+                                  <span className="badge badge-secondary" style={{ fontSize: '0.65rem' }}>
+                                    {sub.sub_products_count} preset
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              {sub.manufacturer || '—'}
+                              {sub.brand && sub.brand !== sub.manufacturer && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Brand: {sub.brand}</div>
+                              )}
+                            </td>
+                            <td>{sub.product_type || '—'}</td>
+                            <td style={{ fontWeight: 600 }}>{sub.base_price.toLocaleString()} {sub.currency}</td>
+                            <td>
+                              <span className={`badge ${sub.is_active ? 'badge-success' : 'badge-danger'}`}>
+                                {sub.is_active ? 'Aktywny' : 'Nieaktywny'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="btn-group">
+                                <Link to={`/products/${sub.id}`} className="btn btn-secondary btn-sm btn-icon" title="Szczegóły">
+                                  <Eye size={14} />
+                                </Link>
+                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(sub.id)} title="Usuń">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isSubExpanded && presets.map(preset => (
+                            <tr key={preset.id} style={{ background: 'var(--bg-hover, #f0f1f3)' }}>
+                              <td></td>
+                              <td><code style={{ fontSize: '0.85rem' }}>{preset.sku}</code></td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '4rem' }}>
+                                  {preset.thumbnail_url && <img src={preset.thumbnail_url} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} />}
+                                  <span style={{ fontWeight: 500 }}>{preset.name}</span>
+                                  <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>preset</span>
+                                </div>
+                              </td>
+                              <td>{preset.brand || preset.manufacturer || '—'}</td>
+                              <td>{preset.product_type || '—'}</td>
+                              <td style={{ fontWeight: 600 }}>{preset.base_price.toLocaleString()} {preset.currency}</td>
+                              <td>
+                                <span className={`badge ${preset.is_active ? 'badge-success' : 'badge-danger'}`}>
+                                  {preset.is_active ? 'Aktywny' : 'Nieaktywny'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="btn-group">
+                                  <Link to={`/products/${preset.id}`} className="btn btn-secondary btn-sm btn-icon" title="Szczegóły">
+                                    <Eye size={14} />
+                                  </Link>
+                                  <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleDelete(preset.id)} title="Usuń">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      )
+                    })}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
