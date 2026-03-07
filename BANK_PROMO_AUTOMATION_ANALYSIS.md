@@ -54,13 +54,29 @@ Wymagają scrapingu (Playwright/Puppeteer).
 
 | Program | Operator | Publiczne API |
 |---------|----------|---------------|
-| Bezcenne Chwile | Mastercard | Brak publicznego API |
-| Visa Oferty / Visa Benefit | Visa | Brak publicznego API |
-| Goodie (cashback) | Niezależny | Brak publicznego API |
+| Bezcenne Chwile | Mastercard | **Tak** — Mastercard Loyalty Promotions API (developer.mastercard.com) |
+| Visa Oferty / Visa Benefit | Visa | **Tak** — Visa Offers Platform API (ograniczony dostęp, wymaga approval) |
+| Goodie (cashback) | Bank Millennium | Brak publicznego API (2.8M instalacji, 800+ sklepów) |
 
-Programy te **nie udostępniają publicznych API**. Integracja możliwa tylko poprzez:
-- Scraping aplikacji webowej (ryzykowne prawnie)
-- Partnerstwo biznesowe (B2B)
+#### Mastercard Developer APIs
+Mastercard udostępnia najbardziej dojrzałe API do programów lojalnościowych:
+- **Mastercard Loyalty Promotions API** — cashback i punkty, dostępne na [developer.mastercard.com](https://developer.mastercard.com/product/mastercard-loyalty-promotions)
+- **Promotions Digital Enablement API** — RESTful API z [reference app na GitHub](https://github.com/Mastercard/promotions-digital-enablement-reference-app)
+- **Priceless Platform API** — integracja portalu benefitów
+
+#### Visa Developer APIs
+- **Visa Offers Platform (VOP)** — dane o transakcjach w czasie rzeczywistym dla card-linked programs (Merchants API, Offers API, Rewards API). Wymaga kontaktu z Developer@visa.com
+- **Visa Merchant Offers Resource Center (VMORC)** — centralne repozytorium ofert z API
+- **Visa Card Eligibility Service (VCES)** — weryfikacja uprawnień do benefitów
+
+Sandbox Visa jest darmowy, produkcja wymaga zatwierdzenia.
+
+#### Goodie + BLIK
+Goodie (Bank Millennium) i BLIK uruchomili pierwszą w Polsce **wielobankową platformę cashbackową**. Brak publicznego API — integracja wyłącznie przez aplikację konsumencką i partnerstwa z bankami.
+
+Integracja z pozostałymi programami możliwa przez:
+- **Mastercard/Visa Developer APIs** (oficjalna droga)
+- Partnerstwo biznesowe B2B
 - Monitorowanie e-maili z ofertami (IMAP parsing)
 
 ---
@@ -249,10 +265,23 @@ Baza danych:
 
 | Aspekt | Status |
 |--------|--------|
-| Scraping publicznych stron promocji | Generalnie dozwolone (dane publiczne) |
+| Scraping publicznych stron promocji | Generalnie dozwolone (dane publiczne, nieosobowe) |
 | Scraping za logowaniem | Narusza regulaminy serwisów |
 | Republikacja treści 1:1 | Narusza prawa autorskie |
 | Agregacja i transformacja danych | Dozwolone (tworzysz nową wartość) |
+
+**Kluczowe aspekty prawne UE:**
+- **RODO** — dotyczy wyłącznie danych osobowych. Scraping publicznych cen, oprocentowań i warunków promocji (dane nieosobowe) **nie podlega RODO**
+- **Precedens PL (sprawa Bisnode, 2019)** — kara ~220 000 EUR dotyczyła scrapingu **danych osobowych** (imiona, e-maile, telefony) z rejestrów publicznych. Nie ma zastosowania do danych o promocjach bankowych
+- **Dyrektywa o bazach danych (96/9/EC)** — sui generis prawo chroni przed ekstrakcją "istotnej części" bazy danych. Ryzyko niskie przy pobieraniu pojedynczych ofert
+- **DORA (od stycznia 2025)** — banki muszą monitorować wszystkie interakcje ICT. Zautomatyzowany ruch może wywołać alerty bezpieczeństwa
+- **Regulaminy serwisów** — większość banków zabrania zautomatyzowanego dostępu w ToS. Naruszenie ToS nie jest przestępstwem, ale może prowadzić do odpowiedzialności cywilnej
+
+**Rekomendowane praktyki:**
+- Scraping tylko publicznych stron (bez logowania)
+- Respektowanie robots.txt i rate limits (1 request / 10-15 sekund)
+- Transformacja danych (nie kopiuj 1:1)
+- Wysyłanie powiadomień zamiast auto-enrollmentu
 
 ### 6.2. Open Banking / PSD2
 
@@ -298,14 +327,55 @@ TIER 3 — Zaawansowane (wymaga budżetu/licencji):
 - Do **pobierania samych promocji** trzeba użyć scrapingu, API Bankier.pl lub parsingu e-maili
 - Pełna automatyzacja (aktywacja promocji) jest **nierealistyczna** bez naruszania regulaminów banków
 
+### Luka rynkowa
+
+Nie istnieje żadne narzędzie w Polsce, które programatycznie agreguje promocje bankowe i powiadamia użytkowników. Wszystkie serwisy agregujące (LiveSmarter.pl, ZarabiajNaBankach.pl, PolakOszczedza.pl, Zgarnijpremie.pl, Moniaki.pl, Banklovers.pl) są prowadzone **ręcznie przez blogerów**. To realna szansa rynkowa — szczególnie w modelu: scraping publicznych stron + AI do ekstrakcji + powiadomienia.
+
 ### Źródła
 
+**Open Banking / PSD2:**
 - [PolishAPI — standard Open Banking](https://polishapi.org/en/)
+- [PolishAPI — lista banków komercyjnych](https://polishapi.org/en/commercial-banks/)
 - [Open Banking in Poland — tracker](https://www.openbankingtracker.com/country/poland)
-- [Bankier.pl — promocje bankowe](https://www.bankier.pl/smart/najlepsze-promocje-bankowe-konta-lokaty-kredyty-pozyczki-lipiec-2025)
-- [System Partnerski Bankier.pl](https://www.systempartnerski.pl/)
-- [Pepper.pl — Finanse i ubezpieczenia](https://www.pepper.pl/grupa/finanse-i-ubezpieczenia)
+- [Berlin Group PSD2 Framework](https://www.berlin-group.org/psd2-access-to-bank-accounts)
+
+**Portale deweloperskie banków:**
 - [PKO Bank Polski — Portal Developera](https://developers.pkobp.pl/en/page/start)
 - [mBank — Portal deweloperski](https://developer.api.mbank.pl/)
 - [Santander — API Portal](https://developer.santander.pl/)
+- [ING Bank Śląski — Dev Portal](https://devportal.ing.pl/)
+- [Bank Millennium — Open API](https://openapi.bankmillennium.pl/)
+- [BNP Paribas](https://gopsd2.bnpparibas.pl/)
+- [Alior Bank](https://developer.aliorbank.pl/)
+- [Bank Pekao SA](https://developer.pekao.com.pl/)
+
+**Programy lojalnościowe — API:**
+- [Mastercard Loyalty Promotions API](https://developer.mastercard.com/product/mastercard-loyalty-promotions)
+- [Mastercard Promotions — GitHub Reference App](https://github.com/Mastercard/promotions-digital-enablement-reference-app)
+- [Visa Offers Platform (VOP)](https://developer.visa.com/capabilities/vop)
+- [Visa Merchant Offers Resource Center](https://developer.visa.com/capabilities/vmorc)
 - [Mastercard Bezcenne Chwile](https://bezcennechwile.mastercard.pl/)
+- [Goodie + BLIK — platforma cashbackowa](https://socialpress.pl/en/2025/10/goodie-i-blik-tworza-pierwsza-w-polsce-wielobankowa-platforme-cashbackowa/)
+
+**Agregatory promocji:**
+- [Bankier.pl — promocje bankowe](https://www.bankier.pl/smart/najlepsze-promocje-bankowe-konta-lokaty-kredyty-pozyczki-lipiec-2025)
+- [System Partnerski Bankier.pl](https://www.systempartnerski.pl/)
+- [LiveSmarter.pl](https://livesmarter.pl/)
+- [ZarabiajNaBankach.pl](https://zarabiajnabankach.pl/)
+- [PolakOszczedza.pl — promocje bankowe](https://polakoszczedza.pl/promocje-bankowe/)
+- [Zgarnijpremie.pl](https://zgarnijpremie.pl/)
+- [Pepper.pl — Finanse i ubezpieczenia](https://www.pepper.pl/grupa/finanse-i-ubezpieczenia)
+
+**Aspekty prawne:**
+- [IAPP: Web Scraping in the EU](https://iapp.org/news/a/the-state-of-web-scraping-in-the-eu)
+- [GDPR Local: Is Scraping Legal?](https://gdprlocal.com/is-website-scraping-legal-all-you-need-to-know/)
+- [Polish DPA Fine — sprawa Bisnode](https://www.insideprivacy.com/data-privacy/polish-supervisory-authority-issues-gdpr-fine-for-data-scraping-without-informing-individuals/)
+
+**Open Banking agregatory:**
+- [Kontomatik](https://www.kontomatik.com)
+- [Tink](https://tink.com/)
+- [TrueLayer](https://truelayer.com/)
+
+**Narzędzia do browser automation:**
+- [Playwright](https://github.com/microsoft/playwright)
+- [Apify — Logging into Websites](https://docs.apify.com/academy/puppeteer-playwright/common-use-cases/logging-into-a-website)
