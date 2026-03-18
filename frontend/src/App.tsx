@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { Package, FileText, Upload, LayoutDashboard, Sliders } from 'lucide-react'
+import { Package, FileText, Upload, LayoutDashboard, Sliders, Flame } from 'lucide-react'
 import ProductsPage from './pages/ProductsPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ProductCreatorPage from './pages/ProductCreatorPage'
@@ -9,6 +9,7 @@ import QuotesPage from './pages/QuotesPage'
 import QuoteDetailPage from './pages/QuoteDetailPage'
 import ImportPage from './pages/ImportPage'
 import DashboardPage from './pages/DashboardPage'
+import { GameUI } from './game/ui/GameUI'
 
 function App() {
   return (
@@ -40,6 +41,10 @@ function App() {
             <Upload size={18} />
             <span>Import danych</span>
           </NavLink>
+          <NavLink to="/game" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <Flame size={18} />
+            <span>Gniew Bogów</span>
+          </NavLink>
         </nav>
       </aside>
       <main className="main-content">
@@ -53,6 +58,7 @@ function App() {
           <Route path="/quotes" element={<QuotesPage />} />
           <Route path="/quotes/:id" element={<QuoteDetailPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/game" element={<GameUI />} />
         </Routes>
       </main>
     </div>
